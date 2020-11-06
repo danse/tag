@@ -76,12 +76,12 @@ walk = do
           walkBranch :: FilePath -> IO Branch
 
 -- filtering logic modeled after a nand in order to narrow strictly
-filterOnly :: Tags -> Tags -> [Tagged Title Tag] -> [Title]
-filterOnly all focused = filterContents pred
+filterIntersection :: Tags -> Tags -> [Tagged Title Tag] -> [Title]
+filterIntersection all focused = filterContents pred
   where pred = null . intersection (difference all focused)
 
 data Options = Options {
-  only :: [FilePath]
+  intersectionOption :: [FilePath]
   }
 
 data Query = Only Tags | All Tags
@@ -90,7 +90,7 @@ getQuery :: Options -> Query
 getQuery (Options o) = Only (fromList o)
 
 runQuery :: Query -> Tags -> [Tagged Title Tag] -> [Title]
-runQuery (Only focused) all = filterOnly all focused
+runQuery (Only focused) all = filterIntersection all focused
 
 select :: Options -> IO [Title]
 select opt = do
@@ -99,7 +99,7 @@ select opt = do
 
 optionParser :: Parser Options
 optionParser = Options
-               <$> some (strOption (long "only" <> short 'o'))
+               <$> some (strOption (long "intersection" <> short 'i'))
 
 optionParserInfo :: ParserInfo Options
 optionParserInfo = info optionParser fullDesc

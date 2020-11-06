@@ -2,6 +2,8 @@ module Tag where
 
 import System.FilePath.Posix (splitPath)
 import System.Directory (getCurrentDirectory)
+import Data.Map.Strict (Map (..), map, singleton, unionWith, unionsWith, fromListWith, empty, toList)
+import Data.Set (Set (..))
 
 type Tag = String
 
@@ -31,3 +33,9 @@ checkRootDir maybePath = do
   pure (maybe local addSlashIfMissing maybePath)
     where addSlashIfMissing = id
   
+-- new data models
+data Graph n = Graph [Edge n] deriving Show
+data Edge  n = Edge (n, n) deriving Show -- from, to
+data GraphByFrom n = GraphByFrom (Map n (Set n)) deriving Show
+data GraphByTo   n = GraphByTo   (Map n (Set n)) deriving Show
+data Linked n = Linked (n, [Linked n])

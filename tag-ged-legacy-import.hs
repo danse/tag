@@ -1,0 +1,3 @@
+import Tag
+
+main = void

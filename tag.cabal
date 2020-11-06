@@ -20,7 +20,8 @@ executable tag
                        directory,
                        unix,
                        optparse-applicative,
-                       filepath
+                       filepath,
+                       containers
   other-modules:       Tag
   default-language:    Haskell2010
 
@@ -31,7 +32,8 @@ executable tag-ged-rename
                        unix,
                        optparse-applicative,
                        filemanip,
-                       filepath
+                       filepath,
+                       containers
   other-modules:       Tag
   default-language:    Haskell2010
 
@@ -47,10 +49,23 @@ executable tag-ged-filter
   other-modules:       Tag
   default-language:    Haskell2010
 
+executable tag-ged-filter-graph
+  main-is:             tag-ged-filter-graph.hs
+  build-depends:       base,
+                       directory,
+                       unix,
+                       optparse-applicative,
+                       filemanip,
+                       containers,
+                       filepath
+  other-modules:       Tag
+  default-language:    Haskell2010
+
 library
   exposed-modules:     Tag
   build-depends:       base,
                        filepath,
-                       directory
+                       directory,
+                       containers
   default-language:    Haskell2010
 

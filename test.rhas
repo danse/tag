@@ -1,0 +1,4 @@
+[
+ ("~/ripresa/*.json" , "data"),
+ ("~/atland/margin-data.json" , "data")
+]
