@@ -1,3 +1,0 @@
-import Tag
-
-main = void
