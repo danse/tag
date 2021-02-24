@@ -1,24 +1,14 @@
 import qualified Data.Map.Lazy as Map
-import qualified Data.Set      as Set
-import qualified Data.Foldable as Foldable
 import qualified Data.Tree     as Tree
 import qualified Data.List     as List
-import Data.Map.Lazy (Map(..))
-import Data.Set      (Set(..))
+import Data.Map.Lazy (Map)
+import Data.Set      (Set)
 import Data.Tree     (Tree(..))
-import Data.Function ((&), on)
+import Data.Function ((&))
 import Tag
 
-data TaggedSet = TaggedSet { taggesSetTag :: Tag, unTaggedSet :: Set Tagged }
-
-subsets :: [TaggedSet] -> TaggedSet -> [TaggedSet]
-subsets candidates (TaggedSet t1 s1) =
-  let filtering :: TaggedSet -> Bool
-      filtering (TaggedSet t2 s2) = s2 `Set.isProperSubsetOf` s1
-  in List.filter filtering candidates
-
 unfolding :: [TaggedSet] -> TaggedSet -> (Tag, [TaggedSet])
-unfolding allSets branch@(TaggedSet t s) = (t, subsets allSets branch)
+unfolding allSets branch@(TaggedSet t _) = (t, subsets allSets branch)
 
 supForest :: [TaggedSet] -> Tree.Forest Tag
 supForest a = Tree.unfoldForest (unfolding a) a
@@ -26,18 +16,39 @@ supForest a = Tree.unfoldForest (unfolding a) a
 treeDepth :: Tree Tag -> Int
 treeDepth = length . Tree.levels
 
--- | Try reading a tag file structure from the current directory or
--- show an error
-readInvertedGraph :: IO (Map Tag (Set Tagged))
-readInvertedGraph = fmap (invertGraph . parseGraph) walk
+toSortedForest :: Map Tag (Set Tagged) -> Tree.Forest Tag
+toSortedForest = reverse
+               . List.sortOn treeDepth
+               . supForest
+               . map (uncurry TaggedSet)
+               . Map.toList
+
+removeDuplicates :: [Tag] -> [Tree Tag] -> [Tree Tag]
+removeDuplicates  _ [] = []
+removeDuplicates [] (t:ts) = t : removeDuplicates (Tree.flatten t) ts
+removeDuplicates known ts = removeDuplicates [] (filter filtering ts)
+  where filtering :: Tree Tag -> Bool
+        filtering tree = not (elem (rootLabel tree) known)
+
+{-
+
+duplication detection relies on sorting. A tree which comes before its
+superset will not be detected as a duplicate
+
+-}
 
 main :: IO ()
 main = do
-  g <- readInvertedGraph
-  g & Map.toList
-    & map (uncurry TaggedSet)
-    & supForest
-    & List.sortOn treeDepth
-    & reverse
-    & Tree.drawForest
-    & putStr
+  gra <- readInvertedGraph
+  gra & toSortedForest
+      & removeDuplicates []
+      & Tree.drawForest
+      & putStr
+
+type SubsetTrees = [Tree Tag]
+
+g = undefined
+g :: [TaggedSet] -> SubsetTrees
+
+h = undefined
+h :: SubsetTrees -> [Tree Tag]

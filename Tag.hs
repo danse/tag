@@ -1,36 +1,18 @@
 module Tag where
 
 import System.FilePath.Posix (splitPath)
-import System.Directory (
-  createDirectoryIfMissing,
-  getCurrentDirectory,
-  setCurrentDirectory)
-import System.FilePath.Posix (
-  takeDirectory,
-  takeFileName,
-  splitDirectories,
-  splitPath)
+import System.Directory (getCurrentDirectory)
+import System.FilePath.Posix (splitDirectories)
 import System.FilePath.Glob (namesMatching)
-import Data.Set (
-  Set (..),
-  intersection,
-  difference,
-  union,
-  unions,
-  fromList,
-  size)
+import Data.Set (Set, union)
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
+import qualified Data.Set  as Set
+import qualified Data.List as List
 import Data.Map.Strict (
-  empty,
-  filter,
+  Map,
   fromListWith,
-  map,
-  Map (..),
-  singleton,
   toList,
-  unionsWith,
-  unionWith)
+  unionsWith)
 import Data.Tuple (swap)
 
 type Tag    = String
@@ -40,6 +22,7 @@ type Tagged = String
 takePathEnd :: FilePath -> FilePath
 takePathEnd = head . dropWhile null . reverse . splitPath
 
+rootDir :: [Char]
 rootDir = "tags"
 
 -- an easy alternative is to get roots from the home with
@@ -73,9 +56,9 @@ walk = do
   paths <- collectBranches
   sequence (Prelude.map walkBranch paths)
     where walkBranch :: FilePath -> IO Branch
-          walkBranch path = do
-            contentPaths <- contained path
-            pure (Branch path contentPaths)
+          walkBranch tagPath' = do
+            contentPaths' <- contained tagPath'
+            pure (Branch tagPath' contentPaths')
           collectBranches :: IO [FilePath]
           collectBranches = do
             home <- getCurrentDirectory
@@ -92,7 +75,7 @@ parseGraph = Data.Map.Strict.unionsWith union . fmap branchToMap
       branchToMap = linkedToMap . branchToLinked
       branchToLinked :: Branch -> [(String, Set String)]
       branchToLinked (Branch tag paths) = fmap (addPath tag) paths where
-        addPath tag p = (readTag p, Set.singleton $ readTag tag)
+        addPath t p = (readTag p, Set.singleton $ readTag t)
       linkedToMap :: [(String, Set String)] -> Map String (Set String)
       linkedToMap = Data.Map.Strict.fromListWith union
 
@@ -102,25 +85,18 @@ invertGraph = Map.fromListWith union . expand . fmap swap . toList
         expand ((s, tagged):r) = fmap (\tag -> (tag, Set.singleton tagged)) (Set.toList s) ++ expand r
         expand :: [(Set Tag, Tagged)] -> [(Tag, Set Tagged)]
 
-select :: [String]
-       -> [String]
-       -> Maybe Int
-       -> Maybe Int
-       -> Bool
-       -> [Branch]
-       -> Map String (Set String)
-select i x min max o =
-  let p1 :: Set String -> Bool
-      p1 s
-        | null i    = True
-        | otherwise = (size (fromList i) == size (intersection (fromList i) s))
-      p2 = null . intersection (fromList x)
-      p3 s = maybe True (\ card -> size s >= card) min
-      p4 s = maybe True (\ card -> size s <= card) max
-      pred :: Set String -> Bool
-      pred s
-        | o         = or  partialPredicates
-        | otherwise = and partialPredicates
-        where partialPredicates = [p1 s, p2 s, p3 s, p4 s]
-  in Data.Map.Strict.filter pred . parseGraph
+data TaggedSet = TaggedSet { taggedSetTag :: Tag, taggedSet :: Set Tagged }
 
+subsets :: [TaggedSet] -> TaggedSet -> [TaggedSet]
+subsets candidates (TaggedSet _ s1) =
+  let filtering :: TaggedSet -> Bool
+      filtering (TaggedSet _ s2) = s2 `Set.isProperSubsetOf` s1
+  in List.filter filtering candidates
+
+graphToTagged  :: Map Tag (Set Tagged) -> [TaggedSet]
+graphToTagged = fmap (uncurry TaggedSet) . Map.toList
+
+-- | Try reading a tag file structure from the current directory or
+-- show an error
+readInvertedGraph :: IO (Map Tag (Set Tagged))
+readInvertedGraph = fmap (invertGraph . parseGraph) walk

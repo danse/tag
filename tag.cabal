@@ -39,6 +39,18 @@ executable tag-subsets
   other-modules:       Tag
   default-language:    Haskell2010
 
+executable tag-components
+  main-is:             tag-components.hs
+  build-depends:       base,
+                       directory,
+                       unix,
+                       optparse-applicative,
+                       filemanip,
+                       filepath,
+                       containers
+  other-modules:       Tag
+  default-language:    Haskell2010
+
 executable tag-rename
   main-is:             tag-rename.hs
   build-depends:       base,
