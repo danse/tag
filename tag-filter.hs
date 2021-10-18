@@ -15,8 +15,8 @@ data Options = Options {
   minCard :: Maybe Int,
   maxCard :: Maybe Int,
   optionsOr :: Bool,
-  showLines :: Bool
-  }
+  showLines :: Bool,
+  path :: Maybe String}
 
 optionParser :: Parser Options
 optionParser = Options
@@ -26,6 +26,7 @@ optionParser = Options
                <*> optional (option auto (long "max-cardinality"))
                <*> switch (long "combine-with-or" <> short 'o')
                <*> switch (long "show-lines" <> short 'l')
+               <*> optional (strOption (long "path"))
 
 optionParserInfo :: ParserInfo Options
 optionParserInfo = info optionParser fullDesc
@@ -55,11 +56,17 @@ makePreds i x min' max' =
       p4 s = maybe True (\ card -> length s <= card) max'
   in [p1, p2, p3, p4]
 
+keysAsLines :: Maybe String -> Map String a -> [String]
+keysAsLines maybePath res = withPath <$> keys res
+  where withPath line = case maybePath of
+          Just path -> "\"tags/" <> path <> "/" <> line <> "\""
+          Nothing   -> line
+
 main = do
-  (Options i x min max o l) <- execParser optionParserInfo
+  (Options i x min max o l path) <- execParser optionParserInfo
   branches <- walk
   let preds = makePreds i x min max
       res = select preds o branches
   if l
-    then putStr (unlines (keys (res)))
+    then mapM_ putStrLn $ keysAsLines path res
     else print res
