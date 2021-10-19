@@ -7,7 +7,7 @@ import Data.Monoid( (<>) )
 import Control.Applicative( some )
 import Options.Applicative
 import Tag
-import Control.Exception (handle)
+import Control.Exception (try, SomeException)
 import Control.Monad (join)
 
 type File   = String
@@ -18,8 +18,10 @@ data Feature = Feature { tag::Tag, tagged::File }
 
 link file dir = do
   createDirectoryIfMissing True dir
-  createLink file (dir ++ "/" ++ (takeFileName file))
-  pure ("file "++ file ++" linked in "++ dir)
+  res <- try $ createLink file (dir ++ "/" ++ (takeFileName file)) :: IO (Either SomeException ())
+  case res of
+    Right _ -> pure $ "file " <> file <> " linked in " <> dir
+    Left e -> pure $ show e <> " in " <> dir
 
 store :: Bool -> Feature -> IO Report
 store dry Feature { tagged, tag } = do
