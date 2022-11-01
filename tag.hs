@@ -11,7 +11,6 @@ import Control.Exception (try, SomeException)
 import Control.Monad (join)
 
 type File   = String
-
 type Report = String
 
 data Feature = Feature { tag::Tag, tagged::File }
@@ -24,7 +23,7 @@ link file dir = do
     Left e -> pure $ show e <> " in " <> dir
 
 store :: Bool -> Feature -> IO Report
-store dry Feature { tagged, tag } = do
+store dry (Feature (Tag tag) tagged) = do
   curr <- getCurrentDirectory
   if dry
     then pure (tagged ++" store "++ tag)
@@ -59,7 +58,7 @@ optionParser = Options
 
 exe :: Options -> IO ()
 exe Options {..} = 
-  let tags = map takePathEnd tagPaths
+  let tags = map (Tag . takePathEnd) tagPaths
   in do
     reports <- sequence $ multiple dry tags files
     if consume

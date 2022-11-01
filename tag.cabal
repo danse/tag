@@ -23,7 +23,8 @@ executable tag
                        filepath,
                        containers,
                        filemanip,
-                       tag
+                       tag,
+                       hypergraph
   other-modules:       Tag
   default-language:    Haskell2010
 
@@ -35,7 +36,9 @@ executable tag-subsets
                        optparse-applicative,
                        filemanip,
                        filepath,
-                       containers
+                       containers,
+                       microlens,
+                       hypergraph
   other-modules:       Tag
   default-language:    Haskell2010
 
@@ -47,7 +50,9 @@ executable tag-components
                        optparse-applicative,
                        filemanip,
                        filepath,
-                       containers
+                       containers,
+                       hypergraph,
+                       microlens
   other-modules:       Tag
   default-language:    Haskell2010
 
@@ -59,7 +64,8 @@ executable tag-rename
                        optparse-applicative,
                        filemanip,
                        filepath,
-                       containers
+                       containers,
+                       hypergraph
   other-modules:       Tag
   default-language:    Haskell2010
 
@@ -71,7 +77,9 @@ executable tag-filter
                        optparse-applicative,
                        filemanip,
                        containers,
-                       filepath
+                       filepath,
+                       hypergraph,
+                       microlens
   other-modules:       Tag
   default-language:    Haskell2010
 
@@ -83,7 +91,9 @@ executable tag-flatten
                        optparse-applicative,
                        filemanip,
                        containers,
-                       filepath
+                       filepath,
+                       hypergraph,
+                       microlens
   other-modules:       Tag
   default-language:    Haskell2010
 
@@ -93,6 +103,7 @@ library
                        filepath,
                        directory,
                        containers,
-                       filemanip
+                       filemanip,
+                       hypergraph
   default-language:    Haskell2010
 

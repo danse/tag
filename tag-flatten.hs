@@ -6,25 +6,20 @@ import qualified Data.Set as Set
 import Data.Function (on, (&))
 import Control.Monad (join)
 import Data.List (sort)
+import Lens.Micro.Extras (view)
+import Data.Hypergraph
 import Tag
 
 data Duplicates a = Duplicates { unDuplicates :: [a] }
 
 -- | Calculate set sizes
 --
--- >>> setSizes  (Map.fromList [("tagged", Set.fromList ["t1", "t2"]), ("another", Set.fromList ["t2", "t3"])])
+-- >>> setSizes $ fromLists [("tagged", ["t1", "t2"]), ("another", ["t2", "t3"])])
 -- fromList [("t1",1),("t2",2),("t3",1)]
-setSizes :: Map String (Set String) -> Map String Int
-setSizes =
-  let countTag :: String -> Map String Int -> Map String Int
-      countTag t = Map.insertWith (+) t 1
-      collectTags :: Map String (Set String) -> Duplicates String
-      collectTags = Duplicates . join . fmap Set.toList . Map.elems
-      countTags :: Duplicates String -> Map String Int
-      countTags = foldr countTag Map.empty . unDuplicates
-  in countTags . collectTags
+setSizes :: Tagged String -> Map Tag Int
+setSizes = fmap Set.size . view edges
 
-data SetSize = SetSize { unSetSize :: (String, Int) }
+data SetSize = SetSize { unSetSize :: (Tag, Int) }
 instance Eq SetSize where
   (==) = on (==) (snd . unSetSize)
 instance Ord SetSize where
@@ -35,12 +30,12 @@ instance Ord SetSize where
 -- function will not be able to pick the smallest and it will throw an
 -- exception
 --
--- >>> selectSmallest (Map.fromList [("t1", 1), ("t2", 2)]) (Map.fromList [("tagged", Set.fromList ["t1", "t2"])])
+-- >>> selectSmallest (Map.fromList [("t1", 1), ("t2", 2)]) (fromLists [("tagged", ["t1", "t2"])])
 -- fromList [("tagged","t1")]
-selectSmallest :: Map String Int -> Map String (Set String) -> Map String String
+selectSmallest :: Map Tag Int -> Tagged String -> Map String Tag
 selectSmallest sizes =
   let 
-    addSize :: String -> (String, Maybe Int)
+    addSize :: Tag -> (Tag, Maybe Int)
     addSize t = (t, Map.lookup t sizes)
     -- | The whole graph was already traversed to compute the sizes so
     -- we expect all the maybes to host @Just@ values
@@ -48,24 +43,23 @@ selectSmallest sizes =
     onlyMatches ((_, Nothing):rest) = onlyMatches rest
     onlyMatches ((t, Just i) :rest) = (t, i) : onlyMatches rest
     onlyMatches [] = []
-    toSizes :: Set String -> [SetSize]
+    toSizes :: Set Tag -> [SetSize]
     toSizes = map SetSize
         . onlyMatches
         . map addSize
         . Set.toList
-    smallestTag :: [SetSize] -> String
+    smallestTag :: [SetSize] -> Tag
     smallestTag = fst . unSetSize . head . sort
-  in fmap (smallestTag . toSizes)
+  in fmap (smallestTag . toSizes) . view nodes
 
-format :: Map String String -> String
+format :: Map String Tag -> String
 format =
-  let formatOne :: (String, String) -> String
-      formatOne (file, tag) = tag++"/"++ file
+  let formatOne :: (String, Tag) -> String
+      formatOne (file, Tag tag) = tag++"/"++ file
   in unlines . sort . fmap formatOne . Map.toList
 
 main :: IO ()
 main = do
-  branches <- walk
-  let graph = parseGraph branches :: Map String (Set String)
-      sizes = setSizes graph :: Map String Int
-    in putStr (selectSmallest sizes graph & format)
+  graph <- readGraph
+  let sizes = setSizes graph :: Map Tag Int
+  putStr (selectSmallest sizes graph & format)

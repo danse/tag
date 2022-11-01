@@ -4,19 +4,22 @@ import System.FilePath.Posix (splitPath)
 import System.Directory (getCurrentDirectory)
 import System.FilePath.Posix (splitDirectories)
 import System.FilePath.Glob (namesMatching)
-import Data.Set (Set, union)
-import qualified Data.Map.Strict as Map
-import qualified Data.Set  as Set
-import qualified Data.List as List
+
+import Data.Hypergraph
 import Data.Map.Strict (
   Map,
   fromListWith,
   toList,
   unionsWith)
+import Data.Set (Set, union)
 import Data.Tuple (swap)
 
-type Tag    = String
-type Tagged = String
+import qualified Data.Map.Strict as Map
+import qualified Data.Set  as Set
+import qualified Data.List as List
+
+newtype Tag = Tag String deriving (Eq, Ord)
+type Tagged = Hypergraph Tag
 
 -- this currently fails on paths ending with "/"
 takePathEnd :: FilePath -> FilePath
@@ -39,24 +42,20 @@ checkRootDir maybePath = do
   pure (maybe local addSlashIfMissing maybePath)
     where addSlashIfMissing = id
   
-{-
--- new data models
-data Graph n = Graph [Edge n] deriving Show
-data Edge  n = Edge (n, n) deriving Show -- from, to
-data GraphByFrom n = GraphByFrom (Map n (Set n)) deriving Show
-data GraphByTo   n = GraphByTo   (Map n (Set n)) deriving Show
-data Linked n = Linked (n, [Linked n])
--}
+-- Branch is for mapping the filesystem structure
+data Branch =
+  Branch {
+    tagPath      :: FilePath,  -- ^ a folder, corresponding to a tag
+    contentPaths :: [FilePath] -- ^ folder contents, that duplicate in
+                               -- the different folders
+    } deriving Show
 
--- Branch is for mapping the file configuration
-data Branch = Branch { tagPath :: FilePath, contentPaths :: [FilePath] } deriving Show
-
-walk :: IO [Branch]
-walk = do
+readBranches :: IO [Branch]
+readBranches = do
   paths <- collectBranches
-  sequence (Prelude.map walkBranch paths)
-    where walkBranch :: FilePath -> IO Branch
-          walkBranch tagPath' = do
+  sequence (Prelude.map readBranch paths)
+    where readBranch :: FilePath -> IO Branch
+          readBranch tagPath' = do
             contentPaths' <- contained tagPath'
             pure (Branch tagPath' contentPaths')
           collectBranches :: IO [FilePath]
@@ -66,26 +65,23 @@ walk = do
           contained :: FilePath -> IO [String]
           contained dir = namesMatching (dir ++ "/*")
 
-parseGraph :: [Branch] -> Map String (Set String)
-parseGraph = Data.Map.Strict.unionsWith union . fmap branchToMap
+parseGraph :: [Branch] -> Tagged String
+parseGraph = Hypergraph . Data.Map.Strict.unionsWith union . fmap branchToMap
     where
       -- works on "a/b/" and "a/b"
+      lastSplit :: FilePath -> String
+      lastSplit = last . splitDirectories
       readTag :: FilePath -> Tag
-      readTag = last . splitDirectories 
+      readTag = Tag . lastSplit
       branchToMap = linkedToMap . branchToLinked
-      branchToLinked :: Branch -> [(String, Set String)]
-      branchToLinked (Branch tag paths) = fmap (addPath tag) paths where
-        addPath t p = (readTag p, Set.singleton $ readTag t)
-      linkedToMap :: [(String, Set String)] -> Map String (Set String)
+      branchToLinked :: Branch -> [(String, Set Tag)]
+      branchToLinked (Branch tag contents) =
+        fmap (addContent tag) contents
+        where addContent t c = (lastSplit c, Set.singleton $ readTag t)
+      linkedToMap :: [(String, Set Tag)] -> Map String (Set Tag)
       linkedToMap = Data.Map.Strict.fromListWith union
 
-invertGraph :: Map Tagged (Set Tag) -> Map Tag (Set Tagged)
-invertGraph = Map.fromListWith union . expand . fmap swap . toList
-  where expand [] = []
-        expand ((s, tagged):r) = fmap (\tag -> (tag, Set.singleton tagged)) (Set.toList s) ++ expand r
-        expand :: [(Set Tag, Tagged)] -> [(Tag, Set Tagged)]
-
-data TaggedSet = TaggedSet { taggedSetTag :: Tag, taggedSet :: Set Tagged }
+data TaggedSet = TaggedSet { taggedSetTag :: Tag, taggedSet :: Set String }
 
 subsets :: [TaggedSet] -> TaggedSet -> [TaggedSet]
 subsets candidates (TaggedSet _ s1) =
@@ -93,10 +89,9 @@ subsets candidates (TaggedSet _ s1) =
       filtering (TaggedSet _ s2) = s2 `Set.isProperSubsetOf` s1
   in List.filter filtering candidates
 
-graphToTagged  :: Map Tag (Set Tagged) -> [TaggedSet]
+graphToTagged  :: Map Tag (Set String) -> [TaggedSet]
 graphToTagged = fmap (uncurry TaggedSet) . Map.toList
 
--- | Try reading a tag file structure from the current directory or
--- show an error
-readInvertedGraph :: IO (Map Tag (Set Tagged))
-readInvertedGraph = fmap (invertGraph . parseGraph) walk
+-- | Try reading a tag file structure from the current folder
+readGraph :: IO (Tagged String)
+readGraph = parseGraph <$> readBranches

@@ -1,10 +1,12 @@
 import Tag
 import Data.Functor ((<$>))
 import Options.Applicative
+import Data.Hypergraph (nodes)
 import Data.Map (keys, Map)
 import Data.Set (Set)
 import Data.Function ((&))
 import Data.Foldable (length)
+import Lens.Micro.Extras (view)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -31,7 +33,7 @@ optionParser = Options
 optionParserInfo :: ParserInfo Options
 optionParserInfo = info optionParser fullDesc
 
-select :: [Set String -> Bool] -> Bool -> [Branch] -> Map Tagged (Set Tag)
+select :: [Set Tag -> Bool] -> Bool -> Tagged String -> [String]
 select preds o =
   let applyAll :: Traversable t => t (a -> b) -> a -> t b
       applyAll funcs arg = fmap (arg &) funcs
@@ -39,15 +41,15 @@ select preds o =
       con
         | o         = or
         | otherwise = and
-  in Map.filter (con . applyAll preds) . parseGraph
+  in keys . Map.filter (con . applyAll preds) . view nodes
 
-makePreds :: [String]
-          -> [String]
+makePreds :: [Tag]
+          -> [Tag]
           -> Maybe Int
           -> Maybe Int
-          -> [Set String -> Bool]
+          -> [Set Tag -> Bool]
 makePreds i x min' max' =
-  let p1 :: Set String -> Bool
+  let p1 :: Set Tag -> Bool
       p1 s
         | null i    = True
         | otherwise = (length i == length (Set.intersection (Set.fromList i) s))
@@ -56,17 +58,17 @@ makePreds i x min' max' =
       p4 s = maybe True (\ card -> length s <= card) max'
   in [p1, p2, p3, p4]
 
-keysAsLines :: Maybe String -> Map String a -> [String]
-keysAsLines maybePath res = withPath <$> keys res
-  where withPath line = case maybePath of
-          Just path -> "\"tags/" <> path <> "/" <> line <> "\""
-          Nothing   -> line
+format :: Maybe String -> String -> String
+format maybePath result = case maybePath of
+  Just path -> "\"tags/" <> path <> "/" <> result <> "\""
+  Nothing   -> result
 
 main = do
   (Options i x min max o l path) <- execParser optionParserInfo
-  branches <- walk
-  let preds = makePreds i x min max
-      res = select preds o branches
+  graph <- readGraph
+  let tags = fmap Tag
+      preds = makePreds (tags i) (tags x) min max
+      res = select preds o graph
   if l
-    then mapM_ putStrLn $ keysAsLines path res
+    then mapM_ (putStrLn . format path) res
     else print res
