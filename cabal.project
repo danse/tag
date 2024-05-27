@@ -1,0 +1,4 @@
+packages: tag.cabal
+
+repository hypergraph
+        url: file+noindex:///home/marea/hub/hypergraph/dist-newstyle/sdist/

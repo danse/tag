@@ -40,15 +40,16 @@ showVertexForest getNode = Tree.drawForest . mapVertexes
 
 readSubGraph = subGraph . graphToTagged . view edges <$> readGraph
   
-showForest :: (Graph -> Forest Vertex) -> IO ()
-showForest f = do
-  (g', getNode, _) <- readSubGraph
-  putStr (g' & f & showVertexForest getNode)
+showForest :: (Graph -> Forest Vertex) -> GetNode -> Graph -> String
+showForest f getNode g' = g' & f & showVertexForest getNode
 
-showSort :: IO ()
-showSort = do
+showSort :: GetNode -> Graph -> String
+showSort getNode g' = g' & Graph.topSort & fmap (tagString . getNode) & unlines
+
+readPut :: (GetNode -> Graph -> String) -> IO ()
+readPut f = do
   (g', getNode, _) <- readSubGraph
-  putStr (g' & Graph.topSort & fmap (tagString . getNode) & unlines)
+  putStr $ f getNode g'
 
 main :: IO ()
-main = showForest Graph.components
+main = readPut (showForest Graph.components)
