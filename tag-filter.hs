@@ -60,7 +60,7 @@ makePreds i x min' max' =
 
 format :: Maybe String -> String -> String
 format maybePath result = case maybePath of
-  Just path -> "\"tags/" <> path <> "/" <> result <> "\""
+  Just path -> "tags/" <> path <> "/" <> result
   Nothing   -> result
 
 main = do
