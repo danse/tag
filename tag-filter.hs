@@ -24,8 +24,8 @@ optionParser :: Parser Options
 optionParser = Options
                <$> many (strOption (long "include" <> short 'i'))
                <*> many (strOption (long "exclude" <> short 'e'))
-               <*> optional (option auto (long "min-cardinality"))
-               <*> optional (option auto (long "max-cardinality"))
+               <*> optional (option auto (long "min-occurrences"))
+               <*> optional (option auto (long "max-occurrences"))
                <*> switch (long "combine-with-or" <> short 'o')
                <*> switch (long "show-lines" <> short 'l')
                <*> optional (strOption (long "path"))
