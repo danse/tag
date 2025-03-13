@@ -69,6 +69,17 @@ executable tag-rename
   other-modules:       Tag
   default-language:    Haskell2010
 
+executable tag-edgesets
+  main-is:             tag-edgesets.hs
+  build-depends:       base,
+                       containers,
+                       directory,
+                       filemanip,
+                       filepath,
+                       hypergraph
+  other-modules:       Tag
+  default-language:    Haskell2010
+
 executable tag-filter
   main-is:             tag-filter.hs
   build-depends:       base,
