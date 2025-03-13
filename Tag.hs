@@ -68,18 +68,19 @@ readBranches = do
 parseGraph :: [Branch] -> Tagged String
 parseGraph = Hypergraph . Data.Map.Strict.unionsWith union . fmap branchToMap
     where
-      -- works on "a/b/" and "a/b"
-      lastSplit :: FilePath -> String
-      lastSplit = last . splitDirectories
-      readTag :: FilePath -> Tag
-      readTag = Tag . lastSplit
+      branchToMap :: Branch -> Map String (Set Tag)
       branchToMap = linkedToMap . branchToLinked
+      linkedToMap :: [(String, Set Tag)] -> Map String (Set Tag)
+      linkedToMap = Data.Map.Strict.fromListWith union
       branchToLinked :: Branch -> [(String, Set Tag)]
       branchToLinked (Branch tag contents) =
         fmap (addContent tag) contents
         where addContent t c = (lastSplit c, Set.singleton $ readTag t)
-      linkedToMap :: [(String, Set Tag)] -> Map String (Set Tag)
-      linkedToMap = Data.Map.Strict.fromListWith union
+      readTag :: FilePath -> Tag
+      readTag = Tag . lastSplit
+      -- works on "a/b/" and "a/b"
+      lastSplit :: FilePath -> String
+      lastSplit = last . splitDirectories
 
 data TaggedSet = TaggedSet { taggedSetTag :: Tag, taggedSet :: Set String }
 
