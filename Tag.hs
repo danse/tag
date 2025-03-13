@@ -18,7 +18,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set  as Set
 import qualified Data.List as List
 
-newtype Tag = Tag String deriving (Eq, Ord)
+newtype Tag = Tag String deriving (Eq, Ord, Show)
 type Tagged = Hypergraph Tag
 
 -- this currently fails on paths ending with "/"
